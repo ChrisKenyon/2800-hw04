@@ -261,21 +261,89 @@ Transformations should take the form:
    ......
 
 (a) ~p <> p \/ (q /\ p)
-.........
+
+~p <> p
+ = {Absorption}
+T
+= {p<>~p = true}
+
 
 (b) (p \/ r => ((q /\ ~p) => (~r => r)))
-.........
 
-(c) (p \/ q) /\ ((~p \/ q) /\ ~q))
+p \/ r => ((q /\ ~p) => r)
+= {~p=>p = p}
+p \/ r => (~(q /\ ~p) \/ r)
+= {Implication p=>q = ~p\/q}
+~(p \/ r) \/ (~(q /\ ~p) \/ r)
+= {Implication p=>q = ~p\/q}
+(~p /\ ~r) \/ ~(q /\ ~p) \/ r
+= {De Morgan's Law}
+((~p \/ r) /\ (~r \/ r)) \/ ~(q /\ ~p)
+={Associativity and Distributivity}
+((~p\/r)/\true)\/~(q/\~p)
+={p\/~p=true}
+(~p\/r)\/~(q/\~p)
+={p/\true=p}
+~p \/ r \/ ~q \/ p
+={De Morgan}
+True \/ r \/ ~q
+= {p\/~p=true}
+True
+={true\/p = true} 
 
-...
+
+(c) (p \/ q) /\ ((~p \/ q) /\ ~q)
+
+
+(p \/ q) /\ ((~p /\ ~q) \/ (q /\ ~q))
+= {Distributivity}
+(p \/ q) /\ ((~p /\ ~q) \/ false)
+= {p /\ ~p = false}
+(p \/ q) /\ (~p /\ ~q)
+= {p\/false = p}
+(p /\ ~p /\ ~q) \/ (q /\ ~p /\ ~q)
+= {Distributivity}
+(false /\ ~q) \/ (false /\ ~p)
+={p/\~p=false, used twice, with associativity for q }
+false\/false
+={Annihilation, used twice}
+false
+={p\/false=p}
+
 
 (d) (p /\ ~q /\ r) \/ (p /\ ~q /\ ~r) \/ (p /\ q /\ r) \/ (p /\ q /\ ~r)
-.................
+
+p /\ ((~q /\ r) \/ (~q /\ ~r) \/ (q /\ r) \/ (q /\ ~r))
+= {Distributivity}
+p /\ ((q \/ ~r) \/ (q \/ r) \/ (~q \/ ~r) \/ (~q \/ r))
+= {De Morgan's Law, 4 times}
+p /\ (q\/~q \/ ~r\/r)
+= {Associativity and p\/p=p}
+p /\ (true\/true)
+= {p\/~p=true, used twice}
+p /\ true
+= {p\/true = true}
+p
+= {p/\true = p}
 
 (e) (p = q) => ~(~p <> q)
-.................
 
+~((p=q) /\ (~p <> q))
+={Definition of Implication, double negation}
+~(~(p <> q) /\ (~p <> q))
+={(p=q)=~(p<>q)}
+(p<>q) \/ (~p<>q)
+={De Morgans}
+(p/\~q)\/(~p/\q) \/ (~p/\~q)\/(p/\q)
+={definition of xor-  p<>q = (p/\~q)\/(~p/\q) , twice}
+(p/\(~q\/q))\/(~p/\(q\/~q))
+={Associative and Distribuitivity}
+p/\true \/ ~p /\ true
+={p\/~p=true, twice}
+p\/~p
+={p/\true=p, twice}
+True
+={p\/~p=True}
 
 |#
 

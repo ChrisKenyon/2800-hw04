@@ -94,7 +94,7 @@ If your group does not already exist:
    it will cost you points, so please read carefully.
 
 
-Names of ALL group members: FirstName1 LastName1, FirstName2 LastName2, ...
+Names of ALL group members: Izaak Branch, Chris Kenyon
 
 Note: There will be a 10 pt penalty if your names do not follow 
 this format.
@@ -566,7 +566,18 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; X if and only if a is not in X.
 ;; You can use the function in.
 (defunc add (a X)
- ......
+  :input-contract (listp X)
+  :output-contract (listp (add a X))
+ (if (in a X)
+   X
+   (cons a X)))
+
+(check= (add 1 '(1 2 3)) '(1 2 3))
+(check= (add 1 '(2 3 4)) '(1 2 3 4))
+(check= (add nil '(1 2 3)) '(nil 1 2 3))
+(check= (add nil '()) '(nil))
+(check= (add '~ '()) '(~))
+(check= (add '~ '(1 2 3)) '(~ 1 2 3))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPROVE (Modify the input and ouput contracts to use different
@@ -580,8 +591,8 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; NOTICE: the way you traverse px for get-vars will be how you traverse
 ;; expressions in later functions you will write.
 (defunc get-vars (px acc)
-  :input-contract (and (PropExp px) (listp acc))
-  :output-contract (listp (get-vars px acc))
+  :input-contract (and (PropExp px) (Lopvp acc))
+  :output-contract (Lopvp (get-vars px acc))
   (cond ((booleanp px) acc)
         ((atom px) (add px acc))
         ((UnaryOpp (first px)) (get-vars (second px) acc))
@@ -607,8 +618,21 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; in which variables appear does not matter. Recall lab 2 for 
 ;; potentially useful built-in functions
 (defunc perm (a b)
-   ..............
+  :input-contract (and (listp a) (listp b))
+  :output-contract (booleanp (perm a b))
+  (if (endp a)
+    (endp b)
+    (if (in (first a) b)
+      (perm (del (first a) a) (del (first a) b))
+      nil)))
 
+(check= (perm '() '()) t)
+(check= (perm '(A) '(A)) t)
+(check= (perm '(A B) '(B A)) t)
+(check= (perm '(A B C) '(C A B)) t)
+(check= (perm '(A A) '(A B)) nil)
+(check= (perm '() '(A)) nil)
+(check= (perm '(A) '()) nil)
 
 (check= (perm (get-vars 'A '()) '(A)) t)
 (check= (perm (get-vars 'A '(B C)) '(A B C)) t)
@@ -622,21 +646,57 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; of the variable with the boolean val in the expression px.
 ;; Use the template propex gives rise to, as per the lecture notes.
 ;; Look at get-vars (above).
+:program ; Without this, ACL2s insists on using '~ as a variable name, and I can't get around that
 (defunc update (px name val)
-  ..........
+  :input-contract (and (PropExp px) (symbolp name) (booleanp val))
+  :output-contract (PropExp (update px name val))
+  (cond ((booleanp px) px)
+        ((atom px) (if (equal px name)
+                     val
+                     px))
+        ((UnaryOpp (first px)) (cons (first px) ; Keep the UnaryOp
+                                     (cons (update (second px) name val) ; Should hit either booleanp or atom
+                                           (update (rest (rest px)) name val)))) ; Update the 3rd element & beyond
+        (t (cons (update (first px) name val) ; BinaryOp case, use booleanp or atom cases of update
+                 (cons (second px) ; Keep the BinaryOp where it was before
+                       (cons (update (third px) name val) ; Update the second var in the BinaryOp, use booleanp or atom cases
+                             (update (rest (rest (rest px))) name val))))))) ; Update the rest of the PropEx
   
 (check= (update T 'A NIL) T)
 (check= (update 'A 'A NIL) NIL)
-;; Add additional tests
-........
+(check= (update '(A v B) 'A nil) '(nil v B))
+(check= (update '(A v A) 'A t) '(t v t))
+(check= (update '((~ A) v (~ B)) 'B nil) '((~ A) v (~ nil)))
+(check= (update '((A v A) ^ (~ (A v A))) 'A nil) '((nil v nil) ^ (~ (nil v nil))))
 
+:logic ; return to logic mode
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DEFINE
 ;; ConstBoolExp: All -> Boolean
 ;; (ConstBoolExp px) determines if px is a PropEx 
 ;; with NO symbols / free variables.
 (defunc ConstBoolExp (px)
- ........
+  :input-contract t
+  :output-contract (booleanp (ConstBoolExp px))
+ (if (PropExp px)
+   (cond ((booleanp px) t)
+         ((atom px) (listp px)) ; '() should be T, all other atoms should be nil, because booleans would be consumed above
+         ((UnaryOpp (first px)) (booleanp (second px)))
+         (t (and (ConstBoolExp (first px)) (ConstBoolExp (third px)) (ConstBoolExp (rest (rest (rest px)))))))
+   nil))
+
+(check= (ConstBoolExp '()) t)
+(check= (ConstBoolExp t) t)
+(check= (ConstBoolExp nil) t)
+
+(check= (ConstBoolExp '(t)) nil) ; apparently '(t) is not a valid PropEx
+(check= (ConstBoolExp '(t ^ nil)) t)
+(check= (ConstBoolExp '(t ^ A)) nil)
+(check= (ConstBoolExp '(nil ^ B)) nil)
+(check= (ConstBoolExp '((t v nil) v (t => nil))) t)
+(check= (ConstBoolExp '(nil v (~ t) => A)) nil)
+(check= (ConstBoolExp '(~ nil)) t)
+          
  
 ;; <<@QUESTION_4C>>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -647,10 +707,28 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; just booleans and operators. If this expression has variables, then
 ;; return nil. You may have to define helper functions to evaluate
 ;; your expressions.
+(defun xor (p q)
+  (and (not (and p q)) (or p q)))
+
+(check= (xor nil nil) nil)
+(check= (xor nil t) t)
+(check= (xor t nil) t)
+(check= (xor t t) nil)
+
+:program ; This is needed here because ACL2s cannot prove termination of the below function
 (defunc beval (bx)
   :input-contract (PropExp bx)
   :output-contract (Booleanp (beval bx))
-  ..........
+  (if (ConstBoolExp bx)
+    (cond ((booleanp bx) bx)
+          ((UnaryOpp (first bx)) (not (second bx)))
+          (t (cond ((equal (second bx) 'v) (or (beval (first bx)) (beval (third bx))))
+                   ((equal (second bx) '^) (and (beval (first bx)) (beval (third bx))))
+                   ((equal (second bx) '==) (iff (beval (first bx)) (beval (third bx))))
+                   ((equal (second bx) '<>) (xor (beval (first bx)) (beval (third bx))))
+                   ((equal (second bx) '=>) (implies (beval (first bx)) (beval (third bx)))))))
+    nil))
+        
   
 (check= (beval T) T)
 (check= (beval NIL) NIL)
@@ -658,6 +736,14 @@ calls in a single cond branch, due to the PropEx data definition.
 (check= (beval '(T ^ T)) T)
 (check= (beval '(T v NIL)) T)
 (check= (beval '(~ T)) NIL)
+(check= (beval '((~ T) v (~ T))) NIL)
+
+:logic ;reinstate logic mode
+
+;; GIVEN  a list of boolean expression PAIRS that can be evaluated.
+(defdata px-pair (list PropEx PropEx))
+;; DEFINE a list of px-pairs.
+(defdata lopxpair (listof px-pair))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; GIVEN
@@ -681,12 +767,7 @@ calls in a single cond branch, due to the PropEx data definition.
 (check= (cbe-listp '((t nil)
                      ((~ nil)(nil ^ t)))) t)
 (check= (cbe-listp '((t nil)
-                     ((~ nil)(a ^ t)))) nil)
-
-;; GIVEN  a list of boolean expression PAIRS that can be evaluated.
-(defdata px-pair (list PropEx PropEx))
-;; DEFINE a list of px-pairs.
-(defdata lopxpair ....)
+                     ((~ nil)(a ^ t)))) nil)#|ACL2s-ToDo-Line|#
 
 
 

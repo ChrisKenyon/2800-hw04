@@ -364,23 +364,62 @@ argument (for valid or unsatisfiable formulas) or by exhibiting
 assignments that show satisfiability or falsifiability.
 
 (A) p =  (q => (p => p))
+p = (q => true)  
+={p=>p = true}
+p = q
+={p=>true=p}
 
-....
+This is satisfiable (q=T,p=T) and falsifiable(q=T,p=F)
 
 (B) (p => q) <> (~q  /\ p)
 
-....
+(~p\/q) <> (~q /\ p)
+={p=>q = ~p\/q}
+(~p\/q) <> ~(~p\/q)
+={De Morgan and associative}
+True
+{p<>~p=true}
+
+This is satisfiable and unfalsifiable
 
 (C) (((false /\ ~p) \/ p) => p)
 
-....
+(false \/ p) => p
+{false/\p=false}
+p=>p
+{false\/p=p}
+True
+{p=>p=true}
+
+This is satisfiable and unfalsifiable
+
 
 (D) [(~(p /\ q) \/ r) /\ (~p \/ ~q \/ ~r)] <> (p /\ q)
 
-....
+
+
+[((~p \/ ~q) \/ r) /\ ((~p \/ ~q) \/ ~r)] <> (p /\ q)
+={De Morgan's}
+(~p\/~q)/\(r\/~r) <> (p /\ q)
+= {Distributivity}
+(~p\/~q)/\true <> (p /\ q)
+= {p/\~p=true}
+(p/\q) <> (p/\q)
+={p/\true=p}
+
+This is unsatisfiable and falsifiable
 
 (E) ~(p => ~q \/ q)
-......
+
+~(p => True)
+={~p\/p = True}
+~(True)
+={p=>True=True}
+False
+={Not true}
+
+This is unsatisfiable and falsifiable
+
 
 |#
 

@@ -867,13 +867,13 @@ calls in a single cond branch, due to the PropEx data definition.
         (list (list '(t ^ (t v t)) '(t => (t <> t)))
               (list '(t ^ (nil v t)) '(t => (t <> t)))
               (list '(nil ^ (t v nil)) '(nil => (nil <> nil)))
-              (list '(nil ^ (nil v nil)) '(nil => (nil <> nil)))))#|ACL2s-ToDo-Line|#
-
+              (list '(nil ^ (nil v nil)) '(nil => (nil <> nil)))))
 
 ;; Write a test? that checks whether gen_cbe_pairs_list truly
 ;; creates pairs of constant boolean expressions given
 ;; arbitrary propositional expressions.
-...........
+(test? (implies (and (PropExp p1) (PropExp p2) (lopvp vars))
+                (lopxpairp (gen_cbe_pairs_list p1 p2 vars))))
 
 (check= (gen_cbe_pairs_list *pxtest4* *pxtest5* '(A))
         (list (list '(t => (t <> t)) '(~ t))
@@ -894,4 +894,4 @@ calls in a single cond branch, due to the PropEx data definition.
 (check= (equal-expressions *pxtest1* *pxtest2*) t)
 (check= (equal-expressions *pxtest2* *pxtest3*) nil)
 (check= (equal-expressions *pxtest1* *pxtest7*) nil)
-(check= (equal-expressions *pxtest4* *pxtest7*) t)
+(check= (equal-expressions *pxtest4* *pxtest7*) t)#|ACL2s-ToDo-Line|#

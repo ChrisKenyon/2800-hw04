@@ -767,8 +767,7 @@ calls in a single cond branch, due to the PropEx data definition.
 (check= (cbe-listp '((t nil)
                      ((~ nil)(nil ^ t)))) t)
 (check= (cbe-listp '((t nil)
-                     ((~ nil)(a ^ t)))) nil)#|ACL2s-ToDo-Line|#
-
+                     ((~ nil)(a ^ t)))) nil)
 
 
 #|
@@ -795,7 +794,7 @@ calls in a single cond branch, due to the PropEx data definition.
 (defunc equal_px_pair (pair)
   :input-contract (px-pairp pair)
   :output-contract (booleanp (equal_px_pair pair))
-  .......
+  (equal (beval (first pair)) (beval (second pair))))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; GIVEN
@@ -817,8 +816,16 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; (gen_vars_list px1 px2) returns a list of all 
 ;; variables from px1 and px2. There are no duplicats
 ;; in the returned list.
+
 (defunc gen_vars_list (px1 px2)
-  ......
+  :input-contract (and (PropExp px1) (PropExp px2))
+  :output-contract (lopvp (gen_vars_list px1 px2))
+  (get-vars px1 (get-vars px2 '())))
+
+(check= (gen_vars_list '(A v A) '(A v A)) '(A))
+(check= (perm (gen_vars_list '(A v B) '(B v A)) '(A B)) t)
+(check= (perm (gen_vars_list '(A v B) '(C v D)) '(A B C D)) t)
+(check= (perm (gen_vars_list '(A v B)  '(C v C)) '(A B C)) t)
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; DEFINE
@@ -836,7 +843,15 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; Form a pair of cbes for each variable substitution and return the
 ;; list of all such pairs.
 (defunc gen_cbe_pairs_list (px1 px2 vars)
-  ...........
+  :input-contract (and (PropExp px1) (PropExp px2) (lopvp vars))
+  :output-contract (lopxpairp (gen_cbe_pairs_list px1 px2 vars))
+  (if (endp vars) ; this should only be hit if the input for vars is nil, otherwise it would go below an iter before
+    (list (list px1 px2)) ; if we pass in nil for vars, just return a list of the original PropEx expressions
+    (if (endp (rest vars)) ; this is where the actual logic starts, now that we have a 'valid' value of vars
+      (list (list (update px1 (first vars) t) (update px2 (first vars) t))
+            (list (update px1 (first vars) nil) (update px2 (first vars) nil)))
+      (app (gen_cbe_pairs_list (update px1 (first vars) t) (update px2 (first vars) t) (rest vars))
+           (gen_cbe_pairs_list (update px1 (first vars) nil) (update px2 (first vars) nil) (rest vars))))))
   
 ;; Test constants you can modify or add to. Giant expressions with > 4
 ;; variables may be too slow to run.
@@ -852,7 +867,8 @@ calls in a single cond branch, due to the PropEx data definition.
         (list (list '(t ^ (t v t)) '(t => (t <> t)))
               (list '(t ^ (nil v t)) '(t => (t <> t)))
               (list '(nil ^ (t v nil)) '(nil => (nil <> nil)))
-              (list '(nil ^ (nil v nil)) '(nil => (nil <> nil)))))
+              (list '(nil ^ (nil v nil)) '(nil => (nil <> nil)))))#|ACL2s-ToDo-Line|#
+
 
 ;; Write a test? that checks whether gen_cbe_pairs_list truly
 ;; creates pairs of constant boolean expressions given
@@ -871,7 +887,9 @@ calls in a single cond branch, due to the PropEx data definition.
 ;; function you should call from the REPL. This should be a one
 ;; line (for the body) non-recursive function.
 (defunc equal-expressions (px1 px2)
-  ............
+  :input-contract (and (PropExp px1) (PropExp px2) )
+  :output-contract (booleanp (equal-expressions px1 px2))
+  (equal_pxp_list (gen_cbe_pairs_list px1 px2 (gen_vars_list px1 px2))))
   
 (check= (equal-expressions *pxtest1* *pxtest2*) t)
 (check= (equal-expressions *pxtest2* *pxtest3*) nil)
